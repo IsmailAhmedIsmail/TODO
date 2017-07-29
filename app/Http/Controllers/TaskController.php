@@ -1,0 +1,174 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use App\Task;
+use Tymon\JWTAuth\Facades\JWTAuth;
+
+class TaskController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        return Task::public()->get();
+    }
+    public function feed()
+    {
+        $user = UserController::currentUser();
+        $ownTasks = $user->tasks()->get()->toArray();
+        $followedTasks = $user->followedTasks()->get()->toArray();
+        return array_merge($ownTasks,$followedTasks);
+    }
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        //
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store()
+    {
+        $this->validate(request(),[
+           'title' => 'required',
+            'description' => 'required',
+        ]);
+        $task = new Task();
+        $user= JWTAuth::parseToken()->toUser();
+        $task->description = request('description');
+        $task->user_id=$user->id;
+        $task->title=request('title');
+        $task->deadline = request()->has('deadline')? Carbon::createFromFormat('d/m/Y',request('deadline')): Carbon::now()->addWeek();
+        $task->save();
+        return response()->json(['response' => 'Task Created Successfully'],200);
+
+    }
+
+    public function setComplete(Task $task)
+    {
+        if(UserController::currentUser()->id != $task->user_id)
+            return response()->json(['error' => 'You do not have privilege to edit this task'],401);
+
+        $task->completed = true;
+        $task->save();
+        return response()->json(['response' => 'Task has been set to complete'],200);
+    }
+    public function toggleComplete(Task $task)
+    {
+        if(UserController::currentUser()->id != $task->user_id)
+            return response()->json(['error' => 'You do not have privilege to edit this task'],401);
+
+        $task->completed = !$task->completed;
+        $task->save();
+        return response()->json(['response' => 'Task status has been toggled'],200);
+    }
+    public function setInomplete(Task $task)
+    {
+        if(UserController::currentUser()->id != $task->user_id)
+            return response()->json(['error' => 'You do not have privilege to edit this task'],401);
+
+        $task->completed = false;
+        $task->save();
+        return response()->json(['response' => 'Task has been set to incomplete'],200);
+    }
+    public function setPublic(Task $task)
+    {
+        if(UserController::currentUser()->id != $task->user_id)
+            return response()->json(['error' => 'You do not have privilege to edit this task'],401);
+
+        $task->private = false;
+        $task->save();
+        return response()->json(['response' => 'Task has been set to public'],200);
+    }
+    public function setPrivate(Task $task)
+    {
+        if(UserController::currentUser()->id != $task->user_id)
+            return response()->json(['error' => 'You do not have privilege to edit this task'],401);
+        $task->private = true;
+        $task->save();
+        return response()->json(['response' => 'Task has been set to private'],200);
+    }
+    public function setDeadline(Task $task)
+    {
+        if(UserController::currentUser()->id != $task->user_id)
+            return response()->json(['error' => 'You do not have privilege to edit this task'],401);
+
+        $task->deadline = Carbon::createFromFormat('d/m/Y',request('deadline'));
+        $task->save();
+        return response()->json(['response' => 'Task deadline has been updated'],200);
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public static function show(Task $task)
+    {
+        if(!$task->private || UserController::currentUser()->id == $task->user_id )
+            return $task;
+        return response()->json(['error' => 'You do not have privilege to show this task'],401);
+
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+        //
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, Task $task)
+    {
+        //
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy(Task $task)
+    {
+        if(UserController::currentUser()->id != $task->user_id)
+            return response()->json(['error' => 'You do not have privilege to edit this task'],401);
+        $task->delete();
+            return response()->json(['response' => 'Task deleted successfully'],200);
+    }
+    public function deadlinesWarning()
+    {
+//        $tasks = Task::whereRaw('CONVERT(DATE_FORMAT( NOW(),\'%Y-%m-%d-%H:%i:00\'),datetime) - CONVERT(DATE_FORMAT(`created_at`,\'%Y-%m-%d-%H:%i:00\'),datetime) = ((CONVERT(DATE_FORMAT(`deadline`,\'%Y-%m-%d-%H:%i:00\'),datetime) - CONVERT(DATE_FORMAT(`created_at`,\'%Y-%m-%d-%H:%i:00\'),datetime) ) * 0.8 )')->get();
+//        foreach ($tasks as $task)
+//        {
+//            event(new \App\Events\TaskAboutToEnd($task));
+//        }
+        var_dump('batee5a');
+    }
+}
