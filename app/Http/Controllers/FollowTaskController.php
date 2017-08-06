@@ -23,34 +23,33 @@ class FollowTaskController extends Controller
         //user wants to follow his own task
         if($user->id == $task->user_id)
         {
-            return response()->json('Task is already yours, nothing updated.',200);
+            return response()->json(['response' =>'Task is already yours, nothing updated.'],200);
         }
         else if($task->private == false || $this->invited)
         {
             $user->followedTasks()->syncWithoutDetaching($task);
             event(new UserFollowedTask($task,$user));
-            return response()->json('Task followed successfully',200);
+            return response()->json(['response' => 'Task followed successfully'],200);
         }
         else
         {
-            return response()->json('You are not allowed to follow this task.',401);
+            return response()->json(['response' => 'You are not allowed to follow this task.'],401);
         }
     }
 
     public function invite(Task $task, User $invited)
     {
         $user = UserController::currentUser();
-        if($user->user_id != $task->user_id)
-        {
-            return response()->json('You are not allowed to send invites for this post.',401);
-        }
+        $invitation = Invitation::where(['inviting_id' => $user->id,'invited_id' => $invited->id,'task_id' => $task->id])->first();
+        if($invitation != null)
+            return response()->json(['response' => 'Invitation Exists Already!'],200);
         $invitation = Invitation::create([
             'inviting_id' => $user->id,
             'invited_id' => $invited->id,
             'task_id' => $task->id,
         ]);
         event(new InviteToFollow($invitation));
-        return response()->json('Invitation sent successfully',200);
+        return response()->json(['response' => 'Invitation sent successfully'],200);
     }
     public function acceptInvitation($invitation)
     {
@@ -60,7 +59,7 @@ class FollowTaskController extends Controller
         {
             if($user->id != $invitation->invited_id)
             {
-                return response()->json('You are not a part of this invitation. ',401);
+                return response()->json(['response' =>'You are not a part of this invitation.'],401);
             }
             $task = Task::find($invitation->task_id);
             $this->invited=true;
@@ -70,7 +69,7 @@ class FollowTaskController extends Controller
         }
         else
         {
-            return response()->json('Invitation is invalid or expired',404);
+            return response()->json(['response' =>'Invitation is invalid or expired.'],404);
         }
     }
     public function rejectInvitation($invitation)
@@ -81,14 +80,14 @@ class FollowTaskController extends Controller
         {
             if($user->id != $invitation->invited_id)
             {
-                return response()->json('You are not a part of this invitation. ',401);
+                return response()->json(['response'=>'You are not a part of this invitation.'],401);
             }
             $invitation->delete();
-            return response()->json('Invitation rejected.',200);
+            return response()->json(['response' =>'Invitation rejected.'],200);
         }
         else
         {
-            return response()->json('Invitation is invalid or expired',404);
+            return response()->json(['response'=>'Invitation is invalid or expired'],404);
         }
 
     }

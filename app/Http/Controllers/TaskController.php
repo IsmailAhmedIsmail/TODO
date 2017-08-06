@@ -48,7 +48,7 @@ class TaskController extends Controller
             'description' => 'required',
         ]);
         $task = new Task();
-        $user= JWTAuth::parseToken()->toUser();
+        $user= UserController::currentUser();
         $task->description = request('description');
         $task->user_id=$user->id;
         $task->title=request('title');
@@ -60,53 +60,36 @@ class TaskController extends Controller
 
     public function setComplete(Task $task)
     {
-        if(UserController::currentUser()->id != $task->user_id)
-            return response()->json(['error' => 'You do not have privilege to edit this task'],401);
-
         $task->completed = true;
         $task->save();
         return response()->json(['response' => 'Task has been set to complete'],200);
     }
     public function toggleComplete(Task $task)
     {
-        if(UserController::currentUser()->id != $task->user_id)
-            return response()->json(['error' => 'You do not have privilege to edit this task'],401);
-
         $task->completed = !$task->completed;
         $task->save();
         return response()->json(['response' => 'Task status has been toggled'],200);
     }
-    public function setInomplete(Task $task)
+    public function setIncomplete(Task $task)
     {
-        if(UserController::currentUser()->id != $task->user_id)
-            return response()->json(['error' => 'You do not have privilege to edit this task'],401);
-
         $task->completed = false;
         $task->save();
         return response()->json(['response' => 'Task has been set to incomplete'],200);
     }
     public function setPublic(Task $task)
     {
-        if(UserController::currentUser()->id != $task->user_id)
-            return response()->json(['error' => 'You do not have privilege to edit this task'],401);
-
         $task->private = false;
         $task->save();
         return response()->json(['response' => 'Task has been set to public'],200);
     }
     public function setPrivate(Task $task)
     {
-        if(UserController::currentUser()->id != $task->user_id)
-            return response()->json(['error' => 'You do not have privilege to edit this task'],401);
         $task->private = true;
         $task->save();
         return response()->json(['response' => 'Task has been set to private'],200);
     }
     public function setDeadline(Task $task)
     {
-        if(UserController::currentUser()->id != $task->user_id)
-            return response()->json(['error' => 'You do not have privilege to edit this task'],401);
-
         $task->deadline = Carbon::createFromFormat('d/m/Y',request('deadline'));
         $task->save();
         return response()->json(['response' => 'Task deadline has been updated'],200);
@@ -122,7 +105,7 @@ class TaskController extends Controller
     {
         if(!$task->private || UserController::currentUser()->id == $task->user_id )
             return $task;
-        return response()->json(['error' => 'You do not have privilege to show this task'],401);
+        return response()->json(['response' => 'You do not have privilege to show this task'],401);
 
     }
 
@@ -157,18 +140,15 @@ class TaskController extends Controller
      */
     public function destroy(Task $task)
     {
-        if(UserController::currentUser()->id != $task->user_id)
-            return response()->json(['error' => 'You do not have privilege to edit this task'],401);
         $task->delete();
             return response()->json(['response' => 'Task deleted successfully'],200);
     }
-    public function deadlinesWarning()
+    public function addFile (Task $task)
     {
-//        $tasks = Task::whereRaw('CONVERT(DATE_FORMAT( NOW(),\'%Y-%m-%d-%H:%i:00\'),datetime) - CONVERT(DATE_FORMAT(`created_at`,\'%Y-%m-%d-%H:%i:00\'),datetime) = ((CONVERT(DATE_FORMAT(`deadline`,\'%Y-%m-%d-%H:%i:00\'),datetime) - CONVERT(DATE_FORMAT(`created_at`,\'%Y-%m-%d-%H:%i:00\'),datetime) ) * 0.8 )')->get();
-//        foreach ($tasks as $task)
-//        {
-//            event(new \App\Events\TaskAboutToEnd($task));
-//        }
-        var_dump('batee5a');
+        $file = request()->file('file');
+        $ext = $file->guessClientExtension();
+        $file->store('tasks/task'.$task->id);
+        return response()->json(['response' => 'File added successfully'],200);
     }
+
 }

@@ -21,6 +21,7 @@ class CreateTasksTable extends Migration
             $table->boolean('completed')->default(false);
             $table->boolean('private')->default(false);
             $table->dateTime('deadline');
+            $table->boolean('warned')->default(false);
             $table->timestamps();
         });
         Schema::create('task_user_follow', function (Blueprint $table) {

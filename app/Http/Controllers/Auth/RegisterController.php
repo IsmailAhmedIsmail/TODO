@@ -6,10 +6,11 @@ use App\Http\Controllers\UserController;
 use App\User;
 use App\Http\Controllers\Controller;
 
-//use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Validator;
 use Faker\Provider\DateTime;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Http\Request;
+use Illuminate\Auth\Events\Registered;
 
 
 class RegisterController extends Controller
@@ -41,8 +42,6 @@ class RegisterController extends Controller
      */
     public function __construct()
     {
-        //$this->middleware('guest');
-        //$this->middleware('NoToken')->only('create');
     }
 
     /**
@@ -51,14 +50,15 @@ class RegisterController extends Controller
      * @param  array  $data
      * @return \Illuminate\Contracts\Validation\Validator
      */
-//    protected function validator(array $data)
-//    {
-//        return Validator::make($data, [
-//            'name' => 'required|string|max:255',
-//            'email' => 'required|string|email|max:255|unique:users',
-//            'password' => 'required|string|min:6|confirmed',
-//        ]);
-//    }
+    protected function validator(array $data)
+    {
+        return Validator::make($data, [
+            'name' => 'required|string|max:255',
+            'username' => 'required|string|unique:users',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+    }
 
     /**
      * Create a new user instance after a valid registration.
@@ -66,26 +66,22 @@ class RegisterController extends Controller
      * @param  array  $data
      * @return \App\User
      */
-    protected function create()
+
+    public function register(Request $request)
     {
-        $this->validate(request(),[
-            'name' => 'required',
-            'username' => 'required|unique:users',
-            'email' => 'required|unique:users|email',
-            'password' => 'required'
+        $this->validator($request->all())->validate();
+
+        event(new Registered($user = $this->create($request->all())));
+
+        return (new LoginController())->login($request);
+    }
+    protected function create($request)
+    {
+         return User::create([
+            'name' => $request['name'],
+            'email' => $request['email'],
+            'password' => bcrypt($request['password']),
+            'username' => $request['username'],
         ]);
-        // Creation
-         User::create([
-            'name' => request('name'),
-            'email' => request('email'),
-            'password' => bcrypt(request('password')),
-            'username' => request('username'),
-        ]);
-
-        //Login and getting token
-        $token = (new LoginController)->authenticate(request());
-        return $token;
-
-
     }
 }

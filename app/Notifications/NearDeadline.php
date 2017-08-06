@@ -2,30 +2,25 @@
 
 namespace App\Notifications;
 
-use App\Invitation;
-use App\User;
-use App\Task;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
-
-class UserGotInvited extends Notification
+use App\Task;
+class NearDeadline extends Notification
 {
     use Queueable;
 
+    protected $task;
     /**
      * Create a new notification instance.
      *
      * @return void
      */
-    public $invitation, $inviting, $invited, $task;
-    public function __construct(Invitation $invitation)
+    public function __construct(Task $task)
     {
-        $this->invitation = $invitation;
-        $this->inviting = User::find($invitation->inviting_id);
-        $this->invited = User::find($invitation->invited_id);
-        $this->task = Task::find($invitation->task_id);
+        $this->task=$task;
     }
 
     /**
@@ -48,9 +43,10 @@ class UserGotInvited extends Notification
     public function toMail($notifiable)
     {
         return (new MailMessage)
-                    ->subject('You got Task Invitation')
-                    ->markdown('emails.invitation',['task_id'=>$this->invitation->id,'inviting_username'=>$this->inviting->username, 'task_title' => $this->task->title ]);
-
+                    ->subject('Your task deadline is about to come!')
+                    ->line('Your task: '.$this->task->title.' is about to end. Deadline is '.$this->task->deadline.'.')
+                    ->action('Check Task Now', url('/api/tasks/'.$this->task->id))
+                    ->line('Thank you for using our application!');
     }
 
     /**

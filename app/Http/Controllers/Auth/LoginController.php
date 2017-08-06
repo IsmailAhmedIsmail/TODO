@@ -7,12 +7,16 @@ use App\Http\Controllers\UserController;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Foundation\Auth\ThrottlesLogins;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Lang;
+use Laravel\Socialite\Facades\Socialite;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use App\User;
 
 class LoginController extends Controller
 {
+    use AuthenticatesUsers;
     /*
     |--------------------------------------------------------------------------
     | Login Controller
@@ -24,63 +28,54 @@ class LoginController extends Controller
     |
     */
 
-    use ThrottlesLogins;
 
 
-    //protected $redirectTo = '/home';
+    protected $redirectTo = '/home';
 
-
-//    protected function hasTooManyLoginAttempts(Request $request)
-//    {
-//        return $this->limiter()->tooManyAttempts(
-//            $this->throttleKey($request), 4, 2
-//        );
-//    }
     public function username()
     {
         return 'email';
     }
     public function __construct()
     {
-        //$this->middleware('WithToken')->except('authenticate');
-        //$this->middleware('NoToken')->only('authenticate');
         $this->maxAttempts = 4;
         $this->decayMinutes = 2;
     }
-    public function authenticate (Request $request)
+    public function login(Request $request)
     {
+        $this->validateLogin($request);
         $credentials = $request->only('email','password');
-
-        try{
-            if ($this->hasTooManyLoginAttempts($request)) {
-                $this->fireLockoutEvent($request);
-
-                return $this->sendLockoutResponse($request);
-            }
-            if(! $token = JWTAuth::attempt($credentials))
-            {
-                $this->incrementLoginAttempts($request);
-                return response()->json(['error' => 'user credentials are not correct'],401);
-            }
+        if ($this->hasTooManyLoginAttempts($request)) {
+            $this->fireLockoutEvent($request);
+            return $this->sendLockoutResponse($request);
         }
-        catch (JWTException $ex)
-        {
-
-            return response()->json(['error' => 'Something went wrong.'],500);
+        if ($token = $this->guard()->attempt($credentials)) {
+            return $this->sendLoginResponse($request,$token);
         }
-        $user = (new UserController())->searchByEmail(request('email'));
-        $user->api_token=$token;
-        $user->save();
-        return response()->json(['token' => $token],200);
+        $this->incrementLoginAttempts($request);
+        return $this->sendFailedLoginResponse($request);
     }
 
-
+    protected function sendLoginResponse(Request $request, string $token)
+    {
+        $this->clearLoginAttempts($request);
+        return $this->authenticated($request, Auth::guard()->user(), $token);
+    }
+    protected function authenticated(Request $request, $user, string $token)
+    {
+        return response()->json([
+            'token' => $token,
+        ],200);
+    }
+    protected function sendFailedLoginResponse(Request $request)
+    {
+        return response()->json([
+            'response' => 'auth failed',
+        ], 401);
+    }
     public function logout(Request $request)
     {
-        $user = JWTAuth::parseToken()->toUser();
-
-        $user->api_token=null;
-        $user->save();
+        Auth::guard()->logout();
         return response()->json(['response' => 'Logged out successfully.'],200);
     }
     /**
@@ -101,7 +96,23 @@ class LoginController extends Controller
     public function handleProviderCallback()
     {
         $user = Socialite::driver('github')->user();
-
-        // $user->token;
+        $user = $this->getGithubUser($user);
+        $token = JWTAuth::fromUser($user);
+        return response()->json(['token' => $token],200);
     }
+    private function getGithubUser($githubUser)
+    {
+        if ($user = User::where('github_id', $githubUser->id)->first()) {
+            return $user;
+        }
+
+        return User::create([
+            'username' => $githubUser->nickname,
+            'name' => $githubUser->name,
+            'email' => $githubUser->email,
+            'github_id' => $githubUser->id,
+            'avatar' => $githubUser->avatar
+        ]);
+    }
+
 }

@@ -14,7 +14,7 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
-        //
+        
     ];
 
     /**
@@ -28,8 +28,8 @@ class Kernel extends ConsoleKernel
 
         // $schedule->command('inspire')
         //          ->hourly();
-        //$schedule->command('DeadlineCheck')->everyMinute();
-        $schedule->call('App\Http\Controllers\TaskController@deadlinesWarning')->everyMinute();
+        $schedule->command('DeadlineCheck')->everyMinute();
+
     }
 
     /**

@@ -18,11 +18,11 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->describe('Display an inspiring quote');
 Artisan::command('DeadlineCheck',function(){
-//    $tasks = Task::whereRaw('CONVERT(DATE_FORMAT( NOW(),\'%Y-%m-%d-%H:%i:00\'),datetime) - CONVERT(DATE_FORMAT(`created_at`,\'%Y-%m-%d-%H:%i:00\'),datetime) = ((CONVERT(DATE_FORMAT(`deadline`,\'%Y-%m-%d-%H:%i:00\'),datetime) - CONVERT(DATE_FORMAT(`created_at`,\'%Y-%m-%d-%H:%i:00\'),datetime) ) * 0.8 )')->get();
-//    foreach ($tasks as $task)
-//    {
-//        event(new TaskAboutToEnd($task));
-//    }
-    dd("batee5a");
-
+    $tasks = Task::whereRaw("((  Timestamp(NOW()) - Timestamp(`created_at`)    ) >= ((  Timestamp(`deadline`) - Timestamp(`created_at`)    ) * 0.8)) and `warned` = 0")->get();
+    foreach ($tasks as $task)
+    {
+        event(new TaskAboutToEnd($task));
+        $task->warned = true;
+        $task->save();
+    }
 })->describe('sending emails for approaching deadlines.');

@@ -13,29 +13,105 @@ use Illuminate\Http\Request;
 |
 */
 
-Route::post('/register','Auth\RegisterController@create')->middleware('guest');
-Route::post('/login','Auth\LoginController@authenticate')->middleware('guest');
-Route::post('/logout','Auth\LoginController@logout')->middleware('jwt.auth');
-Route::get('/user', 'UserController@currentUser')->middleware('jwt.auth');
-Route::get('login/github', 'Auth\LoginController@redirectToProvider')->middleware('guest');
-Route::get('login/github/callback', 'Auth\LoginController@handleProviderCallback')->middleware('guest');
+Route::post('/register','Auth\RegisterController@register')->middleware('guest')->name('register');
+Route::post('/login','Auth\LoginController@login')->middleware('guest')->name('login');
+Route::post('/logout','Auth\LoginController@logout')->middleware('auth:api')->name('logout');
 
-Route::get('/tasks','TaskController@index')->middleware('guest');
-Route::get('/tasks/feed','TaskController@feed');
-Route::post('/tasks','TaskController@store')->middleware('jwt.auth');
+Route::get('/user', 'UserController@currentUser')->middleware('auth:api')->name('user');
 
-Route::get('/tasks/{task}','TaskController@show')->middleware('jwt.auth');
-Route::post('/tasks/{task}/setPublic','TaskController@setPublic')->middleware('jwt.auth');
-Route::post('/tasks/{task}/setPrivate','TaskController@setPrivate')->middleware('jwt.auth');
-Route::post('/tasks/{task}/setComplete','TaskController@setComplete')->middleware('jwt.auth');
-Route::post('/tasks/{task}/setIncomplete','TaskController@setIncomplete')->middleware('jwt.auth');
-Route::post('/tasks/{task}/toggle','TaskController@toggleComplete')->middleware('jwt.auth');
-Route::post('/tasks/{task}/setDeadline','TaskController@setDeadline')->middleware('jwt.auth');
-Route::delete('/tasks/{task}','TaskController@destroy')->middleware('jwt.auth');
+Route::group(['prefix' => 'users', 'middleware' => 'auth:api'],function(){
+    Route::get('/username', [
+        'as'=> 'search-username',
+        'uses' => 'UserController@searchByUsername'
+    ]);
+    Route::get('/email',[
+        'as' => 'search-email',
+        'uses' => 'UserController@searchByEmail'
+    ]);
+    Route::get('/name',[
+       'as' => 'search-name',
+       'uses' => 'UserController@searchByName'
+    ]);
+});
+Route::group(['prefix' => 'login/github','middleware' => ['guest','web'] ],function(){
+    Route::get('/', [
+       'uses' => 'Auth\LoginController@redirectToProvider',
+        'as' => 'login-github'
+    ]);
+    Route::get('/callback', [
+       'uses' => 'Auth\LoginController@handleProviderCallback',
+        'as' => 'github-callback'
+    ]);
 
-Route::post('/tasks/{task}/follow','FollowTaskController@follow')->middleware('jwt.auth');
-Route::post('/tasks/{task}/invite/{invited}','FollowTaskController@invite')->middleware('jwt.auth');
-Route::post('invitations/{invitation}/accept','FollowTaskController@acceptInvitation')->middleware('jwt.auth');
-Route::post('invitations/{invitation}/reject','FollowTaskController@rejectInvitation')->middleware('jwt.auth');
+});
 
-Route::put('/password','UserController@updatePassword')->middleware('jwt.auth');
+
+Route::get('/tasks','TaskController@index')->middleware('guest')->name('tasks');
+
+Route::get('/tasks/feed','TaskController@feed')->middleware('auth:api')->name('feed');
+Route::post('/tasks','TaskController@store')->middleware('auth:api')->name('post-task');
+Route::get('/tasks/{task}',[
+    'uses' => 'TaskController@show',
+    'as' => 'get-task'
+])->middleware('auth:api');
+Route::post('/tasks/{task}/follow',[
+    'uses' => 'FollowTaskController@follow',
+    'as' => 'follow-task'
+])->middleware('auth:api');
+Route::group(['prefix' => '/tasks/{task}','middleware' =>['auth:api','TaskOwner']], function (){
+
+    Route::post('/setPublic',[
+       'uses' => 'TaskController@setPublic',
+        'as' => 'set-public'
+    ]);
+    Route::post('/setPrivate',[
+       'uses' => 'TaskController@setPrivate',
+        'as' => 'set-private'
+    ]);
+    Route::post('/setComplete',[
+      'uses' =>  'TaskController@setComplete',
+        'as' => 'set-complete'
+    ]);
+    Route::post('/setIncomplete',[
+       'uses' => 'TaskController@setIncomplete',
+        'as' => 'set-incomplete'
+    ]);
+    Route::post('/toggle',[
+        'uses' => 'TaskController@toggleComplete',
+        'as' => 'toggle-complete'
+    ]);
+    Route::post('/setDeadline',[
+        'uses' => 'TaskController@setDeadline',
+        'as' => 'set-deadline'
+    ]);
+    Route::post('/addFile',[
+        'uses' => 'TaskController@addFile',
+        'as' => 'set-file'
+    ]);
+    Route::delete('/',[
+        'uses' => 'TaskController@destroy',
+        'as' => 'delete-task'
+    ]);
+
+    Route::post('/invite/{invited}',[
+        'uses' => 'FollowTaskController@invite',
+        'as' => 'invite'
+    ]);
+});
+
+
+Route::group(['prefix' => 'invitations/{invitation}' , 'middleware' => 'auth:api'],function(){
+    Route::post('/accept',[
+        'uses' => 'FollowTaskController@acceptInvitation',
+        'as' => 'accept-invitation'
+    ]);
+    Route::post('/reject',[
+        'uses' => 'FollowTaskController@rejectInvitation',
+        'as' => 'reject-invitation'
+    ]);
+});
+
+
+Route::post('/password','UserController@updatePassword')->middleware('auth:api')->name('change-password');
+
+Route::post('/avatar','UserController@avatar')->middleware('auth:api')->name('upload-avatar');

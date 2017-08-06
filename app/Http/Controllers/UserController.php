@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\User;
+use Illuminate\Support\Facades\Storage;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use Tymon\JWTAuth\Middleware\GetUserFromToken;
+
 
 class UserController extends Controller
 {
@@ -20,36 +21,17 @@ class UserController extends Controller
     }
 
 
-    public function store()
+    public function searchByUsername()
     {
-        //Validation
-        $this->validate(request(),[
-            'name' => 'required',
-            'username' => 'required|unique:users',
-            'email' => 'required|unique:users|email',
-            'password' => 'required|confirmed'
-        ]);
-        // Creation
-        return $user= User::create([
-            'name' => request('name'),
-            'email' => request('email'),
-            'password' => bcrypt(request('password')),
-            'username' => request('username'),
-        ]);
-
+        return User::where('username',request('username'))->first();
     }
-
-    public function searchByUsername($username)
+    public function searchByName()
     {
-        return User::where('username',$username)->first();
+        return User::where('name',request('name'))->first();
     }
-    public function searchByName($name)
+    public function searchByEmail()
     {
-        return User::where('name',$name)->first();
-    }
-    public function searchByEmail($email)
-    {
-        return User::where('email',$email)->first();
+        return User::where('email',request('email'))->first();
     }
 
     public function show(User $user)
@@ -59,12 +41,11 @@ class UserController extends Controller
 
     public static function  currentUser()
     {
-        return  JWTAuth::parseToken()->toUser();
+        return  auth()->user();
     }
 
     public function updatePassword()
     {
-        $user = self::currentUser();
         $this->validate(request(),[
            'old_password' => 'required',
             'new_password' => 'required|confirmed'
@@ -74,12 +55,23 @@ class UserController extends Controller
         {
             $user->password = bcrypt(request('new_password'));
             $user->save();
-            return response()->json('Password updated successfully.',200);
+            return response()->json(['response' =>'Password updated successfully.'],200);
         }
         else
         {
-            return response()->json('Wrong old password.',403);
+            return response()->json(['response' =>'Wrong old password.'],403);
         }
+    }
+    public function avatar()
+    {
+        $user = self::currentUser();
+
+        $file = request()->file('avatar');
+        $ext = $file->guessClientExtension();
+        $dest=$file->storeAs('avatars','avatar.'.$user->id.'.'.$ext);
+        $user->avatar = $dest;
+        $user->save();
+        return response()->json(['response'=>'Avatar Updated'],200);
     }
 
 }

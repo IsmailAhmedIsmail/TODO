@@ -3,9 +3,10 @@
 namespace App\Listeners;
 
 use App\Events\TaskAboutToEnd;
+use App\Notifications\NearDeadline;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
-
+use App\User;
 class TaskAboutToEndListener
 {
     /**
@@ -26,6 +27,7 @@ class TaskAboutToEndListener
      */
     public function handle(TaskAboutToEnd $event)
     {
-        //
+        $user = User::find($event->task->user_id);
+        $user->notify(new NearDeadline($event->task) );
     }
 }

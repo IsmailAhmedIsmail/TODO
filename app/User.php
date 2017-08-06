@@ -2,13 +2,29 @@
 
 namespace App;
 
+
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-
-class User extends Authenticatable
+use Tymon\JWTAuth\Contracts\JWTSubject as AuthenticatableUserContract;
+use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
+class User extends Authenticatable implements
+    CanResetPasswordContract,
+    AuthenticatableUserContract
 {
     use Notifiable;
 
+    public function getJWTIdentifier()
+    {
+        return $this->getKey();  // Eloquent model method
+    }
+    public function getJWTCustomClaims()
+    {
+        return [
+            'user' => [
+                'id' => $this->id,
+             ]
+        ];
+    }
     /**
      * The attributes that are mass assignable.
      *
@@ -24,7 +40,7 @@ class User extends Authenticatable
     }
 
     protected $fillable = [
-        'name', 'username','email', 'password',
+        'name', 'username','email', 'password', 'github_id','avatar',
     ];
 
     /**
@@ -33,6 +49,6 @@ class User extends Authenticatable
      * @var array
      */
     protected $hidden = [
-        'password', 'remember_token', 'api_token', 'created_at' , 'updated_at',
+        'password', 'remember_token', 'api_token', 'created_at' , 'updated_at','github_id','avatar'
     ];
 }
